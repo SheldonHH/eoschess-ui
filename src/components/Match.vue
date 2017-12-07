@@ -214,7 +214,7 @@ export default {
 						getRowFromBoard(row,from){
 							let nArr = []
 							for(let i = from;i < from + 8;i++) {
-								let str = '<img @click="highlight" src="/static/pieces/p' + this.getCurrentMatch.board[i] + '.svg">'
+								let str = '<img @click="highlight" src="https://raw.githubusercontent.com/nanonano7/eoschess-ui/master/docs/static/pieces/p' + this.getCurrentMatch.board[i] + '.svg">'
 								nArr.push(str)
 							}
 							return nArr

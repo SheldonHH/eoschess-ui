@@ -5,6 +5,7 @@
   "author": "nanonano7",
   "private": true,
   "scripts": {
+    "deploy": "node ./node_modules/vue-gh-pages/index.js",
     "dev": "webpack-dev-server --inline --progress --config build/webpack.dev.conf.js",
     "start": "npm run dev",
     "lint": "eslint --ext .js,.vue src",
@@ -74,6 +75,7 @@
     "node": ">= 4.0.0",
     "npm": ">= 3.0.0"
   },
+  "homepage": "https://nanonano7.github.io/eoschess-ui",
   "browserslist": [
     "> 1%",
     "last 2 versions",

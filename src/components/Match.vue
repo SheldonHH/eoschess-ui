@@ -93,8 +93,10 @@ tr:nth-child(odd) td:nth-child(even),tr:nth-child(even) td:nth-child(odd) {
 			<v-list-tile>
 				<v-list-tile-content>
 					<v-list-tile-title>Time left for next move</v-list-tile-title>
-					<v-list-tile-sub-title>{{(getCurrentMatch.lastmovetime + getCurrentMatch.maxmoveinterval) - Math.round(new Date().getTime() / 1000)}} seconds</v-list-tile-sub-title>
-				</v-list-tile-content>
+					<v-list-tile-sub-title v-if="getCurrentMatch.lastmovetime > 0">{{(getCurrentMatch.lastmovetime + getCurrentMatch.maxmoveinterval) - Math.round(new Date().getTime() / 1000)}} seconds</v-list-tile-sub-title>
+          <v-list-tile-sub-title v-else></v-list-tile-sub-title>
+
+        </v-list-tile-content>
 			</v-list-tile>
 			<v-list-tile>
 				<v-list-tile-content>
@@ -214,8 +216,8 @@ export default {
 						getRowFromBoard(row,from){
 							let nArr = []
 							for(let i = from;i < from + 8;i++) {
-								let str = '<img @click="highlight" src="https://raw.githubusercontent.com/nanonano7/eoschess-ui/master/docs/static/pieces/p' + this.getCurrentMatch.board[i] + '.svg">'
-								nArr.push(str)
+                let str = '<img @click="highlight" src="static/pieces/p' + this.getCurrentMatch.board[i] + '.svg">'
+                nArr.push(str)
 							}
 							return nArr
 						},

@@ -5,9 +5,9 @@ import App from './App'
 import router from './router'
 import store from './store'
 import Vuetify from 'vuetify'
-import 'material-design-icons/iconfont/material-icons.css'
-import 'typeface-roboto/index.css'
-import('vuetify/dist/vuetify.min.css')
+require('material-design-icons/iconfont/material-icons.css')
+require('typeface-roboto/index.css')
+require('vuetify/dist/vuetify.min.css')
 
 Vue.use(VueTimeago, {
   name: 'timeago',

@@ -42,7 +42,7 @@
           </v-list-tile-action>
           <v-list-tile-content>
             <v-list-tile-title class="white--text">
-              Account
+              Account <span v-if="getAccount && getAccount.name">({{getAccount.name}})</span>
             </v-list-tile-title>
           </v-list-tile-content>
         </router-link>

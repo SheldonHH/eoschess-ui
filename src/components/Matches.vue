@@ -22,14 +22,14 @@
             sortable: false
         }]" :items="getMatches" hide-actions class="elevation-1">
             <template slot="items" slot-scope="props">
-              <td>{{ props.item.matchid }}</td>
-              <td>{{ props.item.black }} | {{ props.item.white }}</td>
-              <td v-if="props.item.myGame">
-                <v-btn color="green" @click="$router.replace({ name: 'match', params: { id: props.item.matchid }})">Play</v-btn>
-              </td>
-              <td v-else>
+                <td>{{ props.item.matchid }}</td>
+                <td>{{ props.item.black }} | {{ props.item.white }}</td>
+                <td v-if="props.item.myGame">
+                    <v-btn color="green" @click="$router.replace({ name: 'match', params: { id: props.item.matchid }})">Play</v-btn>
+                </td>
+                <td v-else>
 
-              </td>
+                </td>
             </template>
         </v-data-table>
     </v-flex>
@@ -53,12 +53,32 @@
               (v) => !!v || 'Match ID is required',
               (v) => v > -1 || 'Match ID must be a number'
             ]" required></v-text-field>
-                    <v-btn v-if="loading" disabled color="trasnaperent">
+                    <v-btn v-if="loading" disabled color="transaparent">
                         <v-progress-circular indeterminate color="primary"></v-progress-circular>
                     </v-btn>
                     <v-btn v-else :disabled="!findMatch" color="primary" @click="getMatch(matchId)">Add Match</v-btn>
                 </v-form>
             </v-card>
+            <!--<v-card v-if="matchTab === 'create'">
+                <v-form class="pa-4" v-model="createMatch" ref="form" lazy-validation>
+                    <v-text-field label="Opponent" v-model="opponent" :rules="[
+                        (v) => !!v || 'Opponent is required',
+                        (v) => v.length > 1 || 'Opponent must be an account name'
+                      ]" required></v-text-field>
+                    <v-text-field label="Time limit for move (seconds)" v-model="timelimit" :rules="[
+                        (v) => !!v || 'Time limit is required',
+                        (v) => v > 1 || 'Time limit must be a number'
+                      ]" required></v-text-field>
+                      <v-select v-bind:items="[
+                        { text: 'White', value: 0 },
+                        { text: 'Black', value: 1 }
+                      ]" item-value="value" v-model="boardside" label="Your side" single-line bottom dense required></v-select>
+                    <v-btn v-if="loading" disabled color="transparent">
+                        <v-progress-circular indeterminate color="primary"></v-progress-circular>
+                    </v-btn>
+                    <v-btn v-else :disabled="!createMatch" color="primary" @click="createMatch(opponent)">Create Match</v-btn>
+                </v-form>
+            </v-card>-->
             <v-card v-if="matchTab === 'addResult'">
                 <v-list>
                     <v-list-tile>
@@ -76,8 +96,7 @@
                     <v-list-tile>
                         <v-list-tile-content>
                             <v-list-tile-title>Max move time</v-list-tile-title>
-                            <v-list-tile-sub-title>{{getMatchResult.maxmoveinterval}} seconds (The time players have to make a valid move
-                               before losing automatically)</v-list-tile-sub-title>
+                            <v-list-tile-sub-title>{{getMatchResult.maxmoveinterval}} seconds (The time players have to make a valid move before losing automatically)</v-list-tile-sub-title>
                         </v-list-tile-content>
                     </v-list-tile>
                     <v-list-tile v-if="getMatchResult.status === 1 || getMatchResult.status === 3">
@@ -101,13 +120,13 @@
                         </v-list-tile-content>
                     </v-list-tile>
                 </v-list>
-                    <v-btn v-if="loading" disabled color="trasnaperent">
-                        <v-progress-circular indeterminate color="primary"></v-progress-circular>
-                    </v-btn>
-                    <v-btn v-if="getMatchResult.status === 0 && getMatchResult.myGame && !loading" color="green" @click="acceptMatch(getMatchResult)">Accept Match</v-btn>
-                    <v-btn v-if="getMatchResult.status === 0 && getMatchResult.myGame && !loading" color="red" @click="declineMatch(getMatchResult.matchid)">Decline Match</v-btn>
-                    <v-btn v-if=" !loading" color="primary" @click="watchMatch(getMatchResult)">Watch Match</v-btn>
-                    <v-btn @click="matchTab = 'add', getMatchResult = null">Back</v-btn>
+                <v-btn v-if="loading" disabled color="trasnaperent">
+                    <v-progress-circular indeterminate color="primary"></v-progress-circular>
+                </v-btn>
+                <v-btn v-if="getMatchResult.status === 0 && getMatchResult.myGame && getMatchResult.opponent === getAccount.name  && !loading" color="green" @click="acceptMatch(getMatchResult)">Accept Match</v-btn>
+                <v-btn v-if="getMatchResult.status === 0 && getMatchResult.myGame && !loading" color="red" @click="declineMatch(getMatchResult.matchid)">Decline Match</v-btn>
+                <v-btn v-if="!getMatchResult.myGame && !loading" color="primary" @click="watchMatch(getMatchResult)">Watch Match</v-btn>
+                <v-btn @click="matchTab = 'add', getMatchResult = null">Back</v-btn>
             </v-card>
             <v-card v-if="matchTab === 'create'">
 
@@ -115,22 +134,22 @@
         </v-tabs>
     </v-flex>
     <v-flex xs6 v-if="getEndpointConnectionStatus !== 0">
-      <p>No connection! </br> Connection needed for Matches.</p>
+        <p>No connection! </br> Connection needed for Matches.</p>
 
-      <router-link to="settings">
-          <v-btn color="primary">Settings</v-btn>
-      </router-link>
+        <router-link to="settings">
+            <v-btn color="primary">Settings</v-btn>
+        </router-link>
     </v-flex>
     <v-flex xs6 v-if="!getAccountActive">
-      <p>Account needed for Matches.</p>
+        <p>Account needed for Matches.</p>
 
-      <router-link to="account">
-          <v-btn color="primary">Account</v-btn>
-      </router-link>
+        <router-link to="account">
+            <v-btn color="primary">Account</v-btn>
+        </router-link>
     </v-flex>
     <v-flex xs6 v-else-if="getAccountLocked">
-      <p>Unlocked account needed for Matches.</p>
-      <p>Please unlock your account first.</p>
+        <p>Unlocked account needed for Matches.</p>
+        <p>Please unlock your account first.</p>
 
     </v-flex>
 </v-layout>
@@ -174,7 +193,7 @@ export default {
                 this.loading = true
                 this.$store.dispatch('getMatch', matchId).then((res) => {
                     if (res.rows.length >= 1) {
-                      this.getMatchResult = res.rows[0]
+                        this.getMatchResult = res.rows[0]
                         if (res.rows[0].black === this.getAccount.name || res.rows[0].white === this.getAccount.name) {
                             this.getMatchResult.myGame = true
                             this.matchTab = 'addResult'
@@ -215,9 +234,9 @@ export default {
                     this.launchSnackbar(3000, 'Added match to list', 'red')
                     this.loading = false
                 }, (err) => {
-                  if (err.message === 'The match has already started or is over') {
-                    this.launchSnackbar(3000, err.message, 'red')
-                  }
+                    if (err.message === 'The match has already started or is over') {
+                        this.launchSnackbar(3000, err.message, 'red')
+                    }
                     this.loading = false
                 })
             },
@@ -229,9 +248,9 @@ export default {
                     this.launchSnackbar(3000, 'Added match to list', 'red')
                     this.loading = false
                 }, (err) => {
-                  if (err.message === 'The match has already started or is over') {
-                    this.launchSnackbar(3000, err.message, 'red')
-                  }
+                    if (err.message === 'The match has already started or is over') {
+                        this.launchSnackbar(3000, err.message, 'red')
+                    }
                     this.loading = false
                 })
             },

@@ -24,6 +24,8 @@ const mutations = {
   REMOVE_ACCOUNT (state) {
     state.wallet = null
     state.isActive = false
+    state.privateKey = null
+    state.isLocked = true
   },
   UNLOCK_ACCOUNT (state, privateKey) {
     state.privateKey = privateKey

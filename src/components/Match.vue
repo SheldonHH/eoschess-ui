@@ -4,7 +4,7 @@ table {
     margin: 0 auto;
     border-collapse: collapse;
     background: grey;
-		width: 30%;
+		width: 50%;
 }
 td {
 	margin: 0;
@@ -14,7 +14,7 @@ tr:nth-child(odd) td:nth-child(even),tr:nth-child(even) td:nth-child(odd) {
     background: white;
 }
 .highlighted {
-		outline: 1px solid green;
+		outline: 2px solid blue;
     outline-offset: -2px;
 
 }
@@ -30,9 +30,11 @@ tr:nth-child(odd) td:nth-child(even),tr:nth-child(even) td:nth-child(odd) {
 		<v-btn v-if="loading" disabled color="trasnaperent">
 				<v-progress-circular indeterminate color="primary"></v-progress-circular>
 		</v-btn>
-		<v-btn v-if="!loading && currentMove.length > 1" color="primary" @click="sendMove()">Send move message to contract with {{currentMove.length -1}} steps</v-btn>
-		<v-btn v-if="!loading && currentMove.length > 1" color="red" @click="cancelMove()">Cancel current move</v-btn>
+		<v-btn v-if="!loading && currentMove.length > 1" color="green" @click="sendMove()">Send move message to contract with {{currentMove.length -1}} steps</v-btn>
+		<v-btn v-if="!loading && currentMove.length > 0" color="red" @click="cancelMove()">Cancel current move</v-btn>
 		<v-btn v-else disabled >Send move message to contract</v-btn>
+    <v-btn v-if="!loading" @click="castleMove(1)">Send short castle move</v-btn>
+    <v-btn v-if="!loading" @click="castleMove(0)">Send long castle move</v-btn>
 	</v-card>
 </v-flex>
     <v-flex xs8>
@@ -197,7 +199,7 @@ export default {
 								formatted.push(Number(this.currentMove[i].split('-')[1]))
 							}
 							formatted.push(10)
-							let rem = 16 -formatted.length
+							let rem = 17 -formatted.length
 							for (let j = 0;j < rem;j++) {
 								formatted.push(0)
 							}
@@ -210,6 +212,16 @@ export default {
 								this.loading = false
 								this.currentMove = []
 								this.cancelMove()
+								alert('contract says: ' + err.message)
+							})
+						},
+            castleMove (long) {
+							this.loading = true
+							this.$store.dispatch('sendCastleMove', {matchid: this.getCurrentMatch.matchid, type: long}).then((res) => {
+								this.loading = false
+								alert('contract says: good')
+							}, (err) => {
+								this.loading = false
 								alert('contract says: ' + err.message)
 							})
 						},
@@ -247,6 +259,7 @@ export default {
     mounted() {
         this.$store.dispatch('setCurrentMatch', this.$route.params.id)
 				window.addEventListener('resize', this.calculateHeight)
+        this.calculateHeight()
     }
 }
 

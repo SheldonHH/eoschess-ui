@@ -332,6 +332,47 @@ const actions = {
         })
       })
     })
+  },
+  sendCastleMove ({ commit, state, rootState, dispatch }, moveObj) {
+    return new Promise((resolve, reject) => {
+      var conf = Object.assign({}, state.eosconfig)
+      conf.keyProvider = rootState.wallet.privateKey
+      conf.authorization = rootState.wallet.wallet.name + '@active'
+      conf.scope = ['chess', rootState.wallet.wallet.name]
+      var eos = Eos.Testnet(conf)
+      eos.contract('chess').then(chess => {
+        eos.transaction({
+          scope: ['chess', rootState.wallet.wallet.name],
+          messages: [
+            {
+              code: 'chess',
+              type: 'castling',
+              authorization: [{
+                account: rootState.wallet.wallet.name,
+                permission: 'active'
+              }],
+              data: {
+                matchid: moveObj.matchid,
+                type: moveObj.type,
+                player: rootState.wallet.wallet.name
+              }
+            }
+          ]
+        }).then((res) => {
+          dispatch('updateMatch')
+          resolve(res)
+        }, (err) => {
+          if (JSON.parse(err).details.slice(0, 2) === '10') {
+            let details = JSON.parse(err).details
+            let errString1 = details.substring(details.lastIndexOf('{"s":"') + 1, details.lastIndexOf('","ptr"'))
+            let errString = errString1.split('"')[3]
+            reject(Error(errString))
+          } else {
+            reject(err)
+          }
+        })
+      })
+    })
   }
 }
 

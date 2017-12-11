@@ -21,6 +21,8 @@ function filter (key, value) {
     let newVal = JSON.parse(value)
     newVal.wallet.privateKey = null
     newVal.wallet.isLocked = true
+    newVal.eos.matchRequests = []
+    newVal.eos.matchRequested = []
     window.localStorage.setItem(key, JSON.stringify(newVal))
   } else {
     window.localStorage.setItem(key, value)

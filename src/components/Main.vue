@@ -10,8 +10,46 @@
   }
   .footer {
     max-height: 2px !important;
-
   }
+  /* @group Blink */
+.blink {
+	-webkit-animation: blink .75s linear infinite;
+	-moz-animation: blink .75s linear infinite;
+	-ms-animation: blink .75s linear infinite;
+	-o-animation: blink .75s linear infinite;
+	 animation: blink .75s linear infinite;
+}
+@-webkit-keyframes blink {
+	0% { opacity: 1; }
+	50% { opacity: 1; }
+	50.01% { opacity: 0; }
+	100% { opacity: 0; }
+}
+@-moz-keyframes blink {
+	0% { opacity: 1; }
+	50% { opacity: 1; }
+	50.01% { opacity: 0; }
+	100% { opacity: 0; }
+}
+@-ms-keyframes blink {
+	0% { opacity: 1; }
+	50% { opacity: 1; }
+	50.01% { opacity: 0; }
+	100% { opacity: 0; }
+}
+@-o-keyframes blink {
+	0% { opacity: 1; }
+	50% { opacity: 1; }
+	50.01% { opacity: 0; }
+	100% { opacity: 0; }
+}
+@keyframes blink {
+	0% { opacity: 1; }
+	50% { opacity: 1; }
+	50.01% { opacity: 0; }
+	100% { opacity: 0; }
+}
+/* @end */
 </style>
 
 <template>
@@ -24,7 +62,16 @@
       app
     >
       <v-list dense class="grey darken-3">
-
+        <router-link tag="v-list-tile" to="/home">
+          <v-list-tile-action>
+            <v-icon>home</v-icon>
+          </v-list-tile-action>
+          <v-list-tile-content>
+            <v-list-tile-title class="white--text">
+              Home
+            </v-list-tile-title>
+          </v-list-tile-content>
+        </router-link>
         <router-link tag="v-list-tile" to="/settings">
           <v-list-tile-action>
             <v-icon>settings</v-icon>
@@ -60,7 +107,7 @@
     </v-navigation-drawer>
     <v-toolbar color="blue-grey darken-4" app absolute clipped-left>
       <v-toolbar-side-icon v-if="$vuetify.breakpoint.width <= 1264" @click="drawer = !drawer"></v-toolbar-side-icon>
-      <span class="title">EOS<span class="text">Chess</span> <span class="caption">very Alpha</span>
+      <span class="title">EOS<span class="text">Chess</span> <span class="caption">TESTNET2</span>
       <v-tooltip bottom>
 
       <span v-show="dotVisible" v-bind:style="{ color: 'green'}" slot="activator" v-if="getEndpointConnectionStatus === 0">⚫</span>
@@ -84,7 +131,7 @@
     </v-toolbar-items>
     </v-toolbar>
     <v-content>
-       <v-container   grid-list-md text-xs-center>
+       <v-container grid-list-md text-xs-center>
          <router-view></router-view>
        </v-container>
      </v-content>
@@ -134,8 +181,7 @@
        'getAccountActive',
        'getEndpointRefreshInterval',
        'getAccount',
-       'getCurrentEndpoint',
-       'getMatchesCount'
+       'getCurrentEndpoint'
      ])
    },
    methods: {
@@ -167,15 +213,11 @@
      },
      ping () {
        if (this.getCurrentEndpoint !== null) {
-         this.$store.dispatch('pingEndpoint').then((res) => {
-         }, (err) => {
-           if (err) {
-             console.log(err.message)
-           }
-         })
-       }
-       if (this.getMatchesCount > 0) {
-         this.$store.dispatch('updateMatches')
+         this.$store.dispatch('pingEndpoint')
+         if (this.getAccountActive && !this.getAccountLocked) {
+           this.$store.dispatch('updateMatchRequested')
+           this.$store.dispatch('updateMatchRequests')
+         }
        }
      },
      lockAccount () {

@@ -3,64 +3,36 @@ import Eos from 'eosjs'
 
 const state = {
   eosconfig: {
-    httpEndpoint: 'https://testnet1.eos.io:443',
+    httpEndpoint: 'https://t1readonly.eos.io:443',
     expireInSeconds: 60,
     broadcast: true,
     debug: false,
-    sign: true,
-    mode: 'no-cors'
+    sign: true
   },
   connectionTimeout: 5000,
   getInfo: null,
   endpoints: [
-    {url: 'https://testnet1.eos.io:443', ping: 0, lastConnection: 0}
+    {url: 'https://t1readonly.eos.io:443', ping: 0, lastConnection: 0}
   ],
-  currentEndpoint: {url: 'https://testnet1.eos.io:443', ping: 0, lastConnection: 0},
+  currentEndpoint: {url: 'https://t1readonly.eos.io:443', ping: 0, lastConnection: 0},
   endpointConnectionStatus: 10,
   endpointRefreshInterval: 5000,
-  myMatches: [],
-  currentMatch: null
+  currentMatch: {opponent: null, matchid: null, host: null},
+  matchRequests: [],
+  matchRequested: []
 }
 
 const mutations = {
-  UPDATE_MATCH (state, umatch) {
-    let findMatch = state.myMatches.find(findMatch => {
-      return findMatch.matchid === umatch.matchid
-    })
-    if (findMatch) {
-      findMatch = Object.assign(findMatch, umatch)
-    }
+  UPDATE_MATCH_REQUESTS (state, requests) {
+    state.matchRequests = requests
   },
-  SET_MATCH (state, matchid) {
-    let findMatch = state.myMatches.find(findMatch => {
-      return findMatch.matchid === matchid
-    })
-    if (findMatch) {
-      state.currentMatch = findMatch
-    }
+  UPDATE_MATCH_REQUESTED (state, requests) {
+    state.matchRequested = requests
   },
-  WATCH_MATCH (state, match) {
-    if (match) {
-      let findMatch = state.myMatches.find(findMatch => {
-        return findMatch.matchid === match.matchid
-      })
-      if (!findMatch) {
-        state.myMatches.push(match)
-      }
-    }
-  },
-  UPDATE_MATCHES (state, matches) {
-    for (let i = 0; i < state.myMatches.length; i++) {
-      let findMatch = state.myMatches.find(findMatch => {
-        return findMatch.matchid === matches[i].matchid
-      })
-      if (findMatch) {
-        findMatch = Object.assign(findMatch, matches[i])
-      }
-    }
-  },
-  ADD_MATCH (state, match) {
-    state.myMatches.push(match)
+  SET_CURRENT_MATCH (state, matchObj) {
+    state.currentMatch.opponent = matchObj.opponent
+    state.currentMatch.matchid = matchObj.matchid
+    state.currentMatch.host = matchObj.host
   },
   PING_ENDPOINT_SUCCESS (state, payload) {
     state.currentEndpoint.ping = payload.ping
@@ -161,6 +133,7 @@ const actions = {
     })
   },
   addEndpoint ({ commit, state }, endpoint) {
+    commit('EXTEND_UNLOCK')
     return new Promise((resolve, reject) => {
       let find = state.endpoints.find(find => {
         return find.url === endpoint
@@ -188,12 +161,20 @@ const actions = {
       }
     })
   },
-  getMatch ({ commit, state }, matchid) {
+  getCurrentMatchSet ({ commit, state, rootState }) {
     return new Promise((resolve, reject) => {
-      let parameters = { json: true, scope: 'chess', code: 'chess', table: 'matches', limit: 1, lower_bound: matchid }
-      var eos = Eos.Testnet(state.eosconfig)
+      var tscope
+      if (state.currentMatch.host) {
+        tscope = rootState.wallet.wallet.name
+      } else {
+        tscope = state.currentMatch.opponent
+      }
+      let parameters = { json: true, scope: tscope, code: 'chess', table: 'matches', limit: 1, lower_bound: state.currentMatch.matchid }
+      var conf = Object.assign({}, state.eosconfig)
+      conf.scope = ['chess', tscope].sort()
+      var eos = Eos.Testnet(conf)
       eos.getTableRows(parameters).then((res) => {
-        resolve(res)
+        resolve(res.rows[0])
       }, (err) => {
         if (err) {
           reject(err)
@@ -201,83 +182,42 @@ const actions = {
       })
     })
   },
-  setCurrentMatch ({ commit, state }, matchid) {
-    return new Promise((resolve, reject) => {
-      commit('SET_MATCH', matchid)
-      resolve()
-    })
-  },
-  addMatch ({ commit, state }, match) {
+  setCurrentMatch ({ commit, state }, matchObj) {
     commit('EXTEND_UNLOCK')
     return new Promise((resolve, reject) => {
-      match.lastUpdate = 0
-      commit('ADD_MATCH', match)
+      commit('SET_CURRENT_MATCH', matchObj)
       resolve()
     })
   },
-  updateMatch ({ commit, state, dispatch }, matchid) {
-    return new Promise((resolve, reject) => {
-      dispatch('getMatch', matchid).then((res) => {
-        commit('UPDATE_MATCH', res.rows[0])
-        resolve()
-      })
-    })
-  },
-  updateMatches ({ commit, state, dispatch }) {
-    return new Promise((resolve, reject) => {
-      let gatheredMatches = []
-      loopi(0)
-      function loopi (i) {
-        let l = state.myMatches.length
-        if (i < l) {
-          if (state.myMatches[i].status === 0 || state.myMatches[i].status === 1) {
-            dispatch('getMatch', state.myMatches[i].matchid).then((res) => {
-              gatheredMatches.push(res.rows[0])
-              i++
-              loopi(i)
-            })
-          }
-        } else if (i >= l) {
-          commit('UPDATE_MATCHES', gatheredMatches)
-          resolve()
-        }
-      }
-    })
-  },
-  watchMatch ({ commit, state }, match) {
-    return new Promise((resolve, reject) => {
-      commit('WATCH_MATCH', match)
-      resolve()
-    })
-  },
-  acceptMatch ({ commit, state, rootState }, match) {
+  requestMatch ({ commit, state, rootState }, matchObj) {
     commit('EXTEND_UNLOCK')
     return new Promise((resolve, reject) => {
       var conf = Object.assign({}, state.eosconfig)
       conf.keyProvider = rootState.wallet.privateKey
       conf.authorization = rootState.wallet.wallet.name + '@active'
-      conf.scope = ['chess', rootState.wallet.wallet.name]
+      conf.scope = [rootState.wallet.wallet.name, matchObj.opponent, 'chess'].sort()
+      console.log([rootState.wallet.wallet.name, 'chess', matchObj.opponent])
       var eos = Eos.Testnet(conf)
       eos.contract('chess').then(chess => {
         eos.transaction({
-          scope: ['chess', rootState.wallet.wallet.name],
+          scope: conf.scope,
           messages: [
             {
               code: 'chess',
-              type: 'acceptmatch',
+              type: 'newmatch',
               authorization: [{
                 account: rootState.wallet.wallet.name,
                 permission: 'active'
               }],
               data: {
-                matchid: match.matchid,
-                accept: 1,
-                player: rootState.wallet.wallet.name
+                player: rootState.wallet.wallet.name,
+                side: matchObj.side,
+                opponent: matchObj.opponent,
+                maxmoveinterval: Number(matchObj.maxmoveinterval)
               }
             }
           ]
         }).then((res) => {
-          commit('ADD_MATCH', match)
           resolve(res)
         }, (err) => {
           if (JSON.parse(err).details.slice(0, 2) === '10') {
@@ -292,16 +232,145 @@ const actions = {
       })
     })
   },
-  sendMove ({ commit, state, rootState, dispatch }, moveObj) {
+  updateMatchRequests ({ commit, state, rootState }) {
+    return new Promise((resolve, reject) => {
+      let parameters = {json: true, scope: rootState.wallet.wallet.name, code: 'chess', table: 'requests'}
+      var conf = Object.assign({}, state.eosconfig)
+      conf.scope = ['chess', rootState.wallet.wallet.name].sort()
+      var eos = Eos.Testnet(conf)
+      eos.getTableRows(parameters).then((res) => {
+        if (res && res.rows.length > 0) {
+          for (let i = 0; i < res.rows.length; i++) {
+            res.rows[i].host = false
+          }
+          commit('UPDATE_MATCH_REQUESTS', res.rows)
+        }
+        resolve(res)
+      }, (err) => {
+        if (err) {
+          reject(err)
+        }
+      })
+    })
+  },
+  updateMatchRequested ({ commit, state, rootState }) {
+    return new Promise((resolve, reject) => {
+      let parameters = {json: true, scope: rootState.wallet.wallet.name, code: 'chess', table: 'requested'}
+      var conf = Object.assign({}, state.eosconfig)
+      conf.scope = ['chess', rootState.wallet.wallet.name].sort()
+      var eos = Eos.Testnet(conf)
+      eos.getTableRows(parameters).then((res) => {
+        if (res && res.rows.length > 0) {
+          for (let i = 0; i < res.rows.length; i++) {
+            res.rows[i].host = true
+          }
+          commit('UPDATE_MATCH_REQUESTED', res.rows)
+        }
+        resolve(res)
+      }, (err) => {
+        if (err) {
+          reject(err)
+        }
+      })
+    })
+  },
+  acceptMatch ({ commit, state, rootState }, opponent) {
+    commit('EXTEND_UNLOCK')
     return new Promise((resolve, reject) => {
       var conf = Object.assign({}, state.eosconfig)
       conf.keyProvider = rootState.wallet.privateKey
       conf.authorization = rootState.wallet.wallet.name + '@active'
-      conf.scope = ['chess', rootState.wallet.wallet.name]
+      conf.scope = [rootState.wallet.wallet.name, opponent, 'chess'].sort()
       var eos = Eos.Testnet(conf)
       eos.contract('chess').then(chess => {
         eos.transaction({
-          scope: ['chess', rootState.wallet.wallet.name],
+          scope: conf.scope,
+          messages: [
+            {
+              code: 'chess',
+              type: 'acceptmatch',
+              authorization: [{
+                account: rootState.wallet.wallet.name,
+                permission: 'active'
+              }],
+              data: {
+                player: rootState.wallet.wallet.name,
+                opponent: opponent
+              }
+            }
+          ]
+        }).then((res) => {
+          resolve(res)
+        }, (err) => {
+          if (JSON.parse(err).details.slice(0, 2) === '10') {
+            let details = JSON.parse(err).details
+            let errString1 = details.substring(details.lastIndexOf('{"s":"') + 1, details.lastIndexOf('","ptr"'))
+            let errString = errString1.split('"')[3]
+            reject(Error(errString))
+          } else {
+            reject(err)
+          }
+        })
+      })
+    })
+  },
+  declineMatch ({ commit, state, rootState }, opponent) {
+    commit('EXTEND_UNLOCK')
+    return new Promise((resolve, reject) => {
+      var conf = Object.assign({}, state.eosconfig)
+      conf.keyProvider = rootState.wallet.privateKey
+      conf.authorization = rootState.wallet.wallet.name + '@active'
+      conf.scope = [rootState.wallet.wallet.name, opponent, 'chess'].sort()
+      var eos = Eos.Testnet(conf)
+      eos.contract('chess').then(chess => {
+        eos.transaction({
+          scope: conf.scope,
+          messages: [
+            {
+              code: 'chess',
+              type: 'declinematch',
+              authorization: [{
+                account: rootState.wallet.wallet.name,
+                permission: 'active'
+              }],
+              data: {
+                player: rootState.wallet.wallet.name,
+                opponent: opponent
+              }
+            }
+          ]
+        }).then((res) => {
+          resolve(res)
+        }, (err) => {
+          if (JSON.parse(err).details.slice(0, 2) === '10') {
+            let details = JSON.parse(err).details
+            let errString1 = details.substring(details.lastIndexOf('{"s":"') + 1, details.lastIndexOf('","ptr"'))
+            let errString = errString1.split('"')[3]
+            reject(Error(errString))
+          } else {
+            reject(err)
+          }
+        })
+      })
+    })
+  },
+  sendMove ({ commit, state, rootState, dispatch }, steps) {
+    commit('EXTEND_UNLOCK')
+    return new Promise((resolve, reject) => {
+      var tscope
+      if (state.currentMatch.host) {
+        tscope = rootState.wallet.wallet.name
+      } else {
+        tscope = state.currentMatch.opponent
+      }
+      var conf = Object.assign({}, state.eosconfig)
+      conf.keyProvider = rootState.wallet.privateKey
+      conf.authorization = rootState.wallet.wallet.name + '@active'
+      conf.scope = ['chess', rootState.wallet.wallet.name, state.currentMatch.opponent].sort()
+      var eos = Eos.Testnet(conf)
+      eos.contract('chess').then(chess => {
+        eos.transaction({
+          scope: conf.scope,
           messages: [
             {
               code: 'chess',
@@ -311,9 +380,10 @@ const actions = {
                 permission: 'active'
               }],
               data: {
-                matchid: moveObj.matchid,
+                matchid: state.currentMatch.matchid,
+                steps: steps,
                 player: rootState.wallet.wallet.name,
-                steps: moveObj.steps
+                host: tscope
               }
             }
           ]
@@ -333,16 +403,23 @@ const actions = {
       })
     })
   },
-  sendCastleMove ({ commit, state, rootState, dispatch }, moveObj) {
+  sendCastleMove ({ commit, state, rootState, dispatch }, long) {
+    commit('EXTEND_UNLOCK')
     return new Promise((resolve, reject) => {
+      var tscope
+      if (state.currentMatch.host) {
+        tscope = rootState.wallet.wallet.name
+      } else {
+        tscope = state.currentMatch.opponent
+      }
       var conf = Object.assign({}, state.eosconfig)
       conf.keyProvider = rootState.wallet.privateKey
       conf.authorization = rootState.wallet.wallet.name + '@active'
-      conf.scope = ['chess', rootState.wallet.wallet.name]
+      conf.scope = ['chess', rootState.wallet.wallet.name, state.currentMatch.opponent].sort()
       var eos = Eos.Testnet(conf)
       eos.contract('chess').then(chess => {
         eos.transaction({
-          scope: ['chess', rootState.wallet.wallet.name],
+          scope: conf.scope,
           messages: [
             {
               code: 'chess',
@@ -352,9 +429,10 @@ const actions = {
                 permission: 'active'
               }],
               data: {
-                matchid: moveObj.matchid,
-                type: moveObj.type,
-                player: rootState.wallet.wallet.name
+                matchid: state.currentMatch.matchid,
+                type: long,
+                player: rootState.wallet.wallet.name,
+                host: tscope
               }
             }
           ]
@@ -387,20 +465,24 @@ const getters = {
   getCurrentEndpoint: state => {
     return state.currentEndpoint
   },
-  getMatches: state => {
-    return state.myMatches
-  },
-  getCurrentMatch: state => {
-    return state.currentMatch
-  },
-  getMatchesCount: state => {
-    return state.myMatches.length
-  },
   getEndpointConnectionStatus: state => {
     return state.endpointConnectionStatus
   },
   getEndpointRefreshInterval: state => {
     return state.endpointRefreshInterval
+  },
+  getMatchRequests: state => {
+    return state.matchRequests
+  },
+  getMatchRequested: state => {
+    return state.matchRequested
+  },
+  getAllMatchRequests: state => {
+    let allRequests = state.matchRequested.concat(state.matchRequests)
+    return allRequests
+  },
+  getCurrentMatch: state => {
+    return state.currentMatch
   }
 }
 

@@ -5,134 +5,109 @@
 </style>
 
 <template>
-
 <v-layout row wrap>
-    <v-flex xs6 v-if="getEndpointConnectionStatus === 0 && getAccountActive && !getAccountLocked">
-        <v-data-table :headers="[{
-            text: 'ID',
-            align: 'center',
-            sortable: false
-        }, {
-            text: 'Players',
-            align: 'center',
-            sortable: false
-        }, {
-            text: 'Action',
-            align: 'center',
-            sortable: false
-        }]" :items="getMatches" hide-actions class="elevation-1">
-            <template slot="items" slot-scope="props">
-                <td>{{ props.item.matchid }}</td>
-                <td>{{ props.item.black }} | {{ props.item.white }}</td>
-                <td v-if="props.item.myGame">
-                    <v-btn color="green" @click="$router.replace({ name: 'match', params: { id: props.item.matchid }})">Play</v-btn>
-                </td>
-                <td v-else>
+  <v-flex xs3 v-if="getEndpointConnectionStatus === 0 && getAccountActive && !getAccountLocked">
+    <v-card>
+      <v-toolbar dark card dense flat color="transparent">
+        <v-toolbar-title class="white--text">New match request</v-toolbar-title>
+      </v-toolbar>
+      <v-divider></v-divider>
+      <v-card-text>
+        <v-form v-model="requestMatch" ref="form" lazy-validation>
+            <v-text-field label="Opponent" v-model="requestMatchOpponent" :rules="[
+      (v) => !!v || 'Opponent is required'
+    ]" required></v-text-field>
+    <v-select v-bind:items="[
+  { text: 'White', value: 0 },
+  { text: 'Black', value: 1 }
+]" item-value="value" v-model="requestMatchSide" label="Your Side" single-line bottom dense required></v-select>
+<v-text-field label="Move time limit(seconds)" v-model="requestMatchTimelimit" :rules="[
+    (v) => !!v || 'Time limit is required',
+    (v) => v > 1 || 'Time limit must be a number'
+  ]" required></v-text-field>
+            <v-btn v-if="loading" disabled color="transaparent">
+                <v-progress-circular indeterminate color="primary"></v-progress-circular>
+            </v-btn>
+            <v-btn v-else :disabled="!requestMatch" color="primary" @click="requestNewMatch(requestMatchOpponent, requestMatchSide, requestMatchTimelimit)">Request Match</v-btn>
+        </v-form>
+      </v-card-text>
+      <v-toolbar dark card dense flat color="transparent">
+        <v-toolbar-title class="white--text">Requested</v-toolbar-title>
+      </v-toolbar>
+      <v-divider></v-divider>
+      <v-expansion-panel dark>
+    <v-expansion-panel-content v-for="(item,i) in getMatchRequested" :key="i" v-if="item.status === 0">
+      <div slot="header">{{item.opponent}}</div>
+      <v-card>
+        <v-divider></v-divider>
+        <v-card-text>
+          <p v-if="item.opponentside === 1">Your side: white</p>
+          <p v-else>Your side: black</p>
+          <p>Max move time(sec): {{item.maxmoveinterval}}</p>
+          <p v-if="item.status === 0"><b>Request has not been accepted or declined</b></p>
+        </v-card-text>
+      </v-card>
+    </v-expansion-panel-content>
+    <p v-if="getMatchRequested.length < 1">You have no requested matches</p>
+  </v-expansion-panel>
+</v-card>
+  </v-flex>
+  <v-flex xs4 v-if="getEndpointConnectionStatus === 0 && getAccountActive && !getAccountLocked">
+    <v-card>
+      <v-toolbar dark card dense flat color="transparent">
+      <v-toolbar-title class="white--text">Match requests</v-toolbar-title>
+    </v-toolbar>
+      <v-divider></v-divider>
+    <v-expansion-panel dark>
+  <v-expansion-panel-content v-for="(item,i) in getMatchRequests" :key="i" v-if="item.status === 0">
+    <div slot="header" class="blink">{{item.opponent}}</div>
+    <v-card>
+      <v-divider></v-divider>
+      <v-card-text>
+        <p v-if="item.host && item.opponentside === 1">Your side: White</p>
+        <p v-else-if="item.host && item.opponentside === 1">Your side: Black</p>
+        <p>Max move time(sec): {{item.maxmoveinterval}}</p>
+        <v-btn v-if="loading" disabled color="transaparent">
+            <v-progress-circular indeterminate color="primary"></v-progress-circular>
+        </v-btn>
+        <v-btn v-else color="green" @click="acceptMatch(item.opponent)">Accept</v-btn>
+        <v-btn color="red" @click="declineMatch(item.opponent)">Decline</v-btn>
+      </v-card-text>
+    </v-card>
+  </v-expansion-panel-content>
+  <p v-if="getMatchRequests.length < 1">You have no open match requests</p>
+</v-expansion-panel>
+</v-card>
+  </v-flex>
+  <v-flex xs5 v-if="getEndpointConnectionStatus === 0 && getAccountActive && !getAccountLocked">
+    <v-card>
+      <v-toolbar dark card dense flat color="transparent">
+      <v-toolbar-title class="white--text">My matches</v-toolbar-title>
+    </v-toolbar>
+    <v-divider></v-divider>
+    <v-expansion-panel dark>
+    <v-expansion-panel-content v-for="(item,i) in getAllMatchRequests" :key="i" v-if="item.status !== 0">
+    <div slot="header">{{item.opponent}}</div>
+    <v-card>
+    <v-divider></v-divider>
+    <v-card-text>
+      <p v-if="item.opponentside === 1">Your side: White</p>
+      <p v-else>Your side: Black</p>
+      <p>Max move time: {{item.maxmoveinterval | formatSeconds}}</p>
+      <p v-if="item.matchstart !== 0">Match start time: {{item.matchstart | timeago}}</p>
+      <p v-else>Match has not been started</p>
+      <p v-if="item.lastmovetime !== 0">Last move time: {{item.lastmovetime | timeago}}</p>
+      <p v-else>No moves have been made yet</p>
+      <p v-if="item.lastmovetime !== 0">Time left for next move:{{item.lastmovetime + item.maxmoveinterval | formatRemaining}}</p>
+      <v-btn color="green" @click="playMatch(item.matchid, item.opponent, item.host)">Play</v-btn>
+    </v-card-text>
+    </v-card>
+    </v-expansion-panel-content>
+    <p v-if="getAllMatchRequests.length < 1">You have no match requests</p>
+    </v-expansion-panel>
+</v-card>
+  </v-flex>
 
-                </td>
-            </template>
-        </v-data-table>
-    </v-flex>
-
-    <v-flex xs6 v-if="getEndpointConnectionStatus === 0 && getAccountActive && !getAccountLocked">
-        <v-tabs v-model="matchTab" class="grey darken-3 elevation-1" dark grow icons centered>
-            <v-tabs-bar>
-                <v-tabs-slider color="grey"></v-tabs-slider>
-                <v-tabs-item href="#add">
-                    <v-icon>add</v-icon>
-                    Add Match
-                </v-tabs-item>
-                <v-tabs-item href="#create">
-                    <v-icon>create</v-icon>
-                    Create Match
-                </v-tabs-item>
-            </v-tabs-bar>
-            <v-card v-if="matchTab === 'add'">
-                <v-form class="pa-4" v-model="findMatch" ref="form" lazy-validation>
-                    <v-text-field label="Match ID" v-model="matchId" :rules="[
-              (v) => !!v || 'Match ID is required',
-              (v) => v > -1 || 'Match ID must be a number'
-            ]" required></v-text-field>
-                    <v-btn v-if="loading" disabled color="transaparent">
-                        <v-progress-circular indeterminate color="primary"></v-progress-circular>
-                    </v-btn>
-                    <v-btn v-else :disabled="!findMatch" color="primary" @click="getMatch(matchId)">Add Match</v-btn>
-                </v-form>
-            </v-card>
-            <!--<v-card v-if="matchTab === 'create'">
-                <v-form class="pa-4" v-model="createMatch" ref="form" lazy-validation>
-                    <v-text-field label="Opponent" v-model="opponent" :rules="[
-                        (v) => !!v || 'Opponent is required',
-                        (v) => v.length > 1 || 'Opponent must be an account name'
-                      ]" required></v-text-field>
-                    <v-text-field label="Time limit for move (seconds)" v-model="timelimit" :rules="[
-                        (v) => !!v || 'Time limit is required',
-                        (v) => v > 1 || 'Time limit must be a number'
-                      ]" required></v-text-field>
-                      <v-select v-bind:items="[
-                        { text: 'White', value: 0 },
-                        { text: 'Black', value: 1 }
-                      ]" item-value="value" v-model="boardside" label="Your side" single-line bottom dense required></v-select>
-                    <v-btn v-if="loading" disabled color="transparent">
-                        <v-progress-circular indeterminate color="primary"></v-progress-circular>
-                    </v-btn>
-                    <v-btn v-else :disabled="!createMatch" color="primary" @click="createMatch(opponent)">Create Match</v-btn>
-                </v-form>
-            </v-card>-->
-            <v-card v-if="matchTab === 'addResult'">
-                <v-list>
-                    <v-list-tile>
-                        <v-list-tile-content>
-                            <v-list-tile-title>Match ID</v-list-tile-title>
-                            <v-list-tile-sub-title>{{getMatchResult.matchid}}</v-list-tile-sub-title>
-                        </v-list-tile-content>
-                    </v-list-tile>
-                    <v-list-tile>
-                        <v-list-tile-content>
-                            <v-list-tile-title>Status</v-list-tile-title>
-                            <v-list-tile-sub-title>{{getMatchResult.statusText}}</v-list-tile-sub-title>
-                        </v-list-tile-content>
-                    </v-list-tile>
-                    <v-list-tile>
-                        <v-list-tile-content>
-                            <v-list-tile-title>Max move time</v-list-tile-title>
-                            <v-list-tile-sub-title>{{getMatchResult.maxmoveinterval}} seconds (The time players have to make a valid move before losing automatically)</v-list-tile-sub-title>
-                        </v-list-tile-content>
-                    </v-list-tile>
-                    <v-list-tile v-if="getMatchResult.status === 1 || getMatchResult.status === 3">
-                        <v-list-tile-content>
-                            <v-list-tile-title>Match start</v-list-tile-title>
-                            <v-list-tile-sub-title>
-                                <timeago :since="unixToDatestring(this.getMatchResult.matchstart)"></timeago>
-                            </v-list-tile-sub-title>
-                        </v-list-tile-content>
-                    </v-list-tile>
-                    <v-list-tile>
-                        <v-list-tile-content>
-                            <v-list-tile-title>White</v-list-tile-title>
-                            <v-list-tile-sub-title>{{getMatchResult.white}} ({{getMatchResult.moveswhite}} moves)</v-list-tile-sub-title>
-                        </v-list-tile-content>
-                    </v-list-tile>
-                    <v-list-tile>
-                        <v-list-tile-content>
-                            <v-list-tile-title>Black</v-list-tile-title>
-                            <v-list-tile-sub-title>{{getMatchResult.black}} ({{getMatchResult.movesblack}} moves)</v-list-tile-sub-title>
-                        </v-list-tile-content>
-                    </v-list-tile>
-                </v-list>
-                <v-btn v-if="loading" disabled color="trasnaperent">
-                    <v-progress-circular indeterminate color="primary"></v-progress-circular>
-                </v-btn>
-                <v-btn v-if="getMatchResult.status === 0 && getMatchResult.myGame && getMatchResult.opponent === getAccount.name  && !loading" color="green" @click="acceptMatch(getMatchResult)">Accept Match</v-btn>
-                <v-btn v-if="getMatchResult.status === 0 && getMatchResult.myGame && !loading" color="red" @click="declineMatch(getMatchResult.matchid)">Decline Match</v-btn>
-                <v-btn v-if="!getMatchResult.myGame && !loading" color="primary" @click="watchMatch(getMatchResult)">Watch Match</v-btn>
-                <v-btn @click="matchTab = 'add', getMatchResult = null">Back</v-btn>
-            </v-card>
-            <v-card v-if="matchTab === 'create'">
-
-            </v-card>
-        </v-tabs>
-    </v-flex>
     <v-flex xs6 v-if="getEndpointConnectionStatus !== 0">
         <p>No connection! </br> Connection needed for Matches.</p>
 
@@ -152,6 +127,9 @@
         <p>Please unlock your account first.</p>
 
     </v-flex>
+    <v-snackbar :timeout="snackbarTime" top v-model="snackbar">
+        <p class="snackbarTextColor">{{snackbarText}}</p>
+    </v-snackbar>
 </v-layout>
 
 </template>
@@ -168,13 +146,19 @@ export default {
             'getEndpointConnectionStatus',
             'getAccountActive',
             'getAccountLocked',
-            'getAccountName',
             'getAccount',
-            'getMatches'
+            'getMatches',
+            'getMatchRequests',
+            'getMatchRequested',
+            'getAllMatchRequests'
         ])
     },
     data() {
         return {
+            requestMatch: null,
+            requestMatchOpponent:null,
+            requestMatchSide: null,
+            requestMatchTimelimit: null,
             matchId: null,
             getMatchResult: null,
             findMatch: null,
@@ -188,6 +172,17 @@ export default {
         }
     },
     methods: {
+      requestNewMatch (requestMatchOpponent, requestMatchSide, requestMatchTimelimit) {
+        this.loading = false
+        this.loading = true
+        this.$store.dispatch('requestMatch', {opponent: requestMatchOpponent, side: requestMatchSide, maxmoveinterval: requestMatchTimelimit}).then((res) => {
+          this.loading = false
+          this.launchSnackbar(4000, 'Successfuly sent request', 'red')
+        }, (err) => {
+          this.loading = false
+          this.launchSnackbar(4000, 'Error does the account exist?', 'red')
+        });
+      },
         getMatch(matchId) {
                 this.loading = false
                 this.loading = true
@@ -226,11 +221,10 @@ export default {
                     this.loading = false
                 })
             },
-            acceptMatch(match) {
-                match.type = 0
+            acceptMatch(opponent) {
                 this.loading = false
                 this.loading = true
-                this.$store.dispatch('acceptMatch', match).then((res) => {
+                this.$store.dispatch('acceptMatch', opponent).then((res) => {
                     this.launchSnackbar(3000, 'Added match to list', 'red')
                     this.loading = false
                 }, (err) => {
@@ -240,12 +234,11 @@ export default {
                     this.loading = false
                 })
             },
-            watchMatch(match) {
-                match.type = 1
+            declineMatch(opponent) {
                 this.loading = false
                 this.loading = true
-                this.$store.dispatch('watchMatch', match).then((res) => {
-                    this.launchSnackbar(3000, 'Added match to list', 'red')
+                this.$store.dispatch('declineMatch', opponent).then((res) => {
+                    this.launchSnackbar(3000, 'Successfully declined match', 'red')
                     this.loading = false
                 }, (err) => {
                     if (err.message === 'The match has already started or is over') {
@@ -253,6 +246,11 @@ export default {
                     }
                     this.loading = false
                 })
+            },
+            playMatch(matchid, opponent, host) {
+              this.$store.dispatch('setCurrentMatch', {matchid: matchid, opponent: opponent, host: host}).then((res) => {
+                this.$router.push({ name: 'match', params: { id: matchid }})
+              })
             },
             launchSnackbar(duration, snackbarText, snackbarTextColor) {
                 this.snackbar = false

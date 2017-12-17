@@ -80,10 +80,10 @@ const actions = {
   unlockAccount ({ commit, state, dispatch }, password) {
     return new Promise((resolve, reject) => {
       let decryptedKey = bip38.decrypt(state.wallet.privateKey, password)
-      let decoded = wif.encode(0x80, decryptedKey.privateKey, decryptedKey.compressed)
-      if (Eosecc.privateToPublic(decoded) === state.wallet.publicKey) {
+      let encoded = wif.encode(0x80, decryptedKey.privateKey, decryptedKey.compressed)
+      if (Eosecc.privateToPublic(encoded) === state.wallet.publicKey) {
         dispatch('locker')
-        commit('UNLOCK_ACCOUNT', decoded)
+        commit('UNLOCK_ACCOUNT', encoded)
         resolve('unlocked')
       } else {
         reject(new Error('noMatch'))

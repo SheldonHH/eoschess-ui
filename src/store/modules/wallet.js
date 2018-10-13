@@ -4,7 +4,7 @@ import Eosecc from 'eosjs-ecc'
 import Repeat from 'repeat'
 
 const state = {
-  lockTimeout: 1800,
+  lockTimeout: 1800000,
   lastUnlock: 0,
   isLocked: true,
   isActive: false,

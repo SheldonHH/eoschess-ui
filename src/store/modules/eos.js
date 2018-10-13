@@ -3,7 +3,7 @@ import Eos from 'eosjs'
 
 const state = {
   eosconfig: {
-    httpEndpoint: 'https://t1readonly.eos.io:443',
+    httpEndpoint: 'http://api-kylin.eoshenzhen.io:8890',
     expireInSeconds: 60,
     broadcast: true,
     debug: false,
@@ -12,9 +12,9 @@ const state = {
   connectionTimeout: 5000,
   getInfo: null,
   endpoints: [
-    {url: 'https://t1readonly.eos.io:443', ping: 0, lastConnection: 0}
+    {url: 'http://api-kylin.eoshenzhen.io:8890', ping: 0, lastConnection: 0}
   ],
-  currentEndpoint: {url: 'https://t1readonly.eos.io:443', ping: 0, lastConnection: 0},
+  currentEndpoint: {url: 'http://api-kylin.eoshenzhen.io:8890', ping: 0, lastConnection: 0},
   endpointConnectionStatus: 10,
   endpointRefreshInterval: 5000,
   currentMatch: {opponent: null, matchid: null, host: null},
@@ -201,10 +201,10 @@ const actions = {
       eos.contract('chess').then(chess => {
         eos.transaction({
           scope: conf.scope,
-          messages: [
+          actions: [
             {
-              code: 'chess',
-              type: 'newmatch',
+              account: 'mychesschess',
+              name: 'newmatch',
               authorization: [{
                 account: rootState.wallet.wallet.name,
                 permission: 'active'
